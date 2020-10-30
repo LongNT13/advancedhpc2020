@@ -168,6 +168,10 @@ void Labwork::labwork3_GPU() {
 void Labwork::labwork4_GPU() {
 }
 
+void Labwork::labwork5_CPU() {
+}
+
+>>>>>>> 0afd47b4bb8da876a7a368d3d29cb08c9cd57225
 void Labwork::labwork5_GPU(bool shared) {
 >>>>>>> f8ef21c66dbaef2e208cce78131b7ece95ac86a6
 }
