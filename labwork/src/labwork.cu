@@ -52,7 +52,6 @@ int main(int argc, char **argv) {
             labwork.saveOutputImage("labwork4-gpu-out.jpg");
             break;
         case 5:
-            labwork.labwork5_CPU();
             labwork.saveOutputImage("labwork5-cpu-out.jpg");
             labwork.labwork5_GPU();
             labwork.saveOutputImage("labwork5-gpu-out.jpg");
@@ -169,7 +168,8 @@ void Labwork::labwork3_GPU() {
 void Labwork::labwork4_GPU() {
 }
 
-void Labwork::labwork5_GPU(bool shared) {
+void Labwork::labwork5_GPU() {
+    
 }
 
 void Labwork::labwork6_GPU() {
