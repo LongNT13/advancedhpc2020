@@ -1,0 +1,44 @@
+explain how:
+void Labwork::labwork3_GPU() {
+    // Calculate number of pixels
+    int pixelCount = inputImage->width * inputImage->height;
+    
+    // Allocate CUDA memory
+    uchar3 *d_inputImage;
+    uchar3 *d_grayImage;
+    cudaMalloc(&d_inputImage, pixelCount * 3);
+    cudaMalloc(&d_grayImage, pixelCount * 3);
+
+    // Copy CUDA Memory from CPU to GPU
+    cudaMemcpy(d_inputImage, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    // Processing
+    int blockSize = 256;
+    int numBlock = pixelCount / blockSize;
+    Timer t;
+    t.start();
+    grayScale<<<numBlock, blockSize>>>(d_inputImage, d_grayImage);
+    cudaDeviceSynchronize();
+
+    printf("time elapsed : %fms\n", t.getElapsedTimeInMilliSec());
+    // Copy CUDA Memory from GPU to CPU
+    uchar3 *outputGrayImage;
+    outputGrayImage = (uchar3 *) malloc(pixelCount * 3);
+    cudaMemcpy(outputGrayImage, d_grayImage, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    // Cleaning
+    cudaFree(d_grayImage);
+    cudaFree(d_inputImage);
+    outputImage = (char*) outputGrayImage;
+}
+
+what is the speedup:
+USTH ICT Master 2018, Advanced Programming for HPC.
+Warming up...
+Starting labwork 3
+time elapsed : 0.898000ms
+labwork 3 ellapsed 156.3ms
+
+Try experimenting:
+increase block size -> decrease time (to some extend)
+
