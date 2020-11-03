@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
         case 2:
             labwork.labwork2_GPU();
             break;
-        case 3:
+        case 3:    
             labwork.labwork3_GPU();
             labwork.saveOutputImage("labwork3-gpu-out.jpg");
             break;
@@ -183,18 +183,59 @@ void Labwork::labwork2_GPU() {
     }
 }
 
+__global__ void grayScale(uchar3 *input, uchar3 *output){
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    output[tid].x = (input[tid].x + input[tid].y +
+    input[tid].z) / 3;
+    output[tid].z = output[tid].y = output[tid].x;
+}
+
+void charToUchar3(char *input, uchar3 *output, int pixelCount){
+    for(int i = 0; i < pixelCount; i++){
+        output[i].x = input[i*3];
+        output[i].y = input[i*3 + 1];
+        output[i].z = input[i*3 + 2];
+    }
+}
+
+void uchar3ToChar(uchar3 *input, char *output, int pixelCount){
+    for(int i = 0; i < pixelCount; i++){
+        output[i*3] = input[i].x;
+        output[i*3 + 1] = input[i].y;
+        output[i*3 + 2] = input[i].z;
+    }
+}
+
 void Labwork::labwork3_GPU() {
     // Calculate number of pixels
-
-    // Allocate CUDA memory    
+    int pixelCount = inputImage->width * inputImage->height;
+    uchar3 *tempImage = (uchar3*) malloc(pixelCount * 3);
+    charToUchar3(inputImage->buffer, tempImage, pixelCount);
+    // Allocate CUDA memory
+    uchar3 *d_inputImage;
+    uchar3 *d_grayImage;
+    cudaMalloc(&d_inputImage, pixelCount * 3);
+    cudaMalloc(&d_grayImage, pixelCount * 3);
 
     // Copy CUDA Memory from CPU to GPU
+    cudaMemcpy(d_inputImage, tempImage, pixelCount * 3, cudaMemcpyHostToDevice);
 
     // Processing
+    int blockSize = 64;
+    int numBlock = pixelCount / blockSize;
+    grayScale<<<numBlock, blockSize>>>(d_inputImage, d_grayImage);
 
     // Copy CUDA Memory from GPU to CPU
+    uchar3 *outputGrayImage;
+    outputGrayImage = (uchar3 *) malloc(pixelCount * 3);
+    cudaMemcpy(outputGrayImage, d_grayImage, pixelCount * 3, cudaMemcpyDeviceToHost);
 
     // Cleaning
+    cudaFree(d_grayImage);
+    cudaFree(d_inputImage);
+    outputImage = (char *) malloc(pixelCount * 3);
+    uchar3ToChar(outputGrayImage, outputImage, pixelCount);
+    free(outputGrayImage);
 }
 
 void Labwork::labwork4_GPU() {
