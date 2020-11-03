@@ -110,8 +110,8 @@ void Labwork::labwork1_OpenMP() {
     int pixelCount = inputImage->width * inputImage->height;
     outputImage = static_cast<char *>(malloc(pixelCount * 3));
     
+    double previousTime = 0;
     Timer timer;
-    
     for(int noThreads = 0; noThreads < 500; noThreads++){
         omp_set_num_threads(noThreads);
         timer.start();
@@ -124,7 +124,9 @@ void Labwork::labwork1_OpenMP() {
                 outputImage[i * 3 + 2] = outputImage[i * 3];
             }
         }
-        printf("labwork 1 CPU OpenMP with %d threads ellapsed %.1fms\n", noThreads, timer.getElapsedTimeInMilliSec());
+        double currentTime = timer.getElapsedTimeInMilliSec();
+        printf("labwork 1 CPU OpenMP with %d threads ellapsed %.1fms, currentThread : %f previousThread\n", noThreads, currentTime, (currentTime/previousTime));
+        previousTime = currentTime;
     }
 
 }
