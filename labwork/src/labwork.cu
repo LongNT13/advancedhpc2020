@@ -210,7 +210,7 @@ void Labwork::labwork3_GPU() {
     // Calculate number of pixels
     int pixelCount = inputImage->width * inputImage->height;
     uchar3 *tempImage = (uchar3*) malloc(pixelCount * 3);
-    charToUchar3(inputImage->buffer, tempImage, pixelCount);
+    // charToUchar3(inputImage->buffer, tempImage, pixelCount);
     // Allocate CUDA memory
     uchar3 *d_inputImage;
     uchar3 *d_grayImage;
@@ -218,13 +218,18 @@ void Labwork::labwork3_GPU() {
     cudaMalloc(&d_grayImage, pixelCount * 3);
 
     // Copy CUDA Memory from CPU to GPU
-    cudaMemcpy(d_inputImage, tempImage, pixelCount * 3, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_inputImage, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
 
     // Processing
     int blockSize = 64;
     int numBlock = pixelCount / blockSize;
-    grayScale<<<numBlock, blockSize>>>(d_inputImage, d_grayImage);
+    Timer t;
+    t.start();
 
+    grayScale<<<numBlock, blockSize>>>(d_inputImage, d_grayImage);
+    cudaDeviceSynchronize();
+
+    printf("time elapsed : %fms", t.getElapsedTimeInMilliSec());
     // Copy CUDA Memory from GPU to CPU
     uchar3 *outputGrayImage;
     outputGrayImage = (uchar3 *) malloc(pixelCount * 3);
@@ -233,9 +238,10 @@ void Labwork::labwork3_GPU() {
     // Cleaning
     cudaFree(d_grayImage);
     cudaFree(d_inputImage);
-    outputImage = (char *) malloc(pixelCount * 3);
+    /*outputImage = (char *) malloc(pixelCount * 3);
     uchar3ToChar(outputGrayImage, outputImage, pixelCount);
-    free(outputGrayImage);
+    free(outputGrayImage);*/
+    outputImage = (char*) outputGrayImage;
 }
 
 void Labwork::labwork4_GPU() {
