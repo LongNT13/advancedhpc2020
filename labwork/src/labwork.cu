@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
             printf("labwork 1 CPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             timer.start();
             labwork.labwork1_OpenMP();
-            printf("labwork 1 CPU OpenMP ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            // printf("labwork 1 CPU OpenMP ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork2-openmp-out.jpg");
             break;
         case 2:
@@ -110,16 +110,23 @@ void Labwork::labwork1_OpenMP() {
     int pixelCount = inputImage->width * inputImage->height;
     outputImage = static_cast<char *>(malloc(pixelCount * 3));
     
-    omp_set_num_threads(4);
-    for (int j = 0; j < 100; j++) {     // let's do it 100 times, otherwise it's too fast!
-        #pragma omp parallel for
-        for (int i = 0; i < pixelCount; i++) {
-            outputImage[i * 3] = (char) (((int) inputImage->buffer[i * 3] + (int) inputImage->buffer[i * 3 + 1] +
-                                          (int) inputImage->buffer[i * 3 + 2]) / 3);
-            outputImage[i * 3 + 1] = outputImage[i * 3];
-            outputImage[i * 3 + 2] = outputImage[i * 3];
+    Timer timer;
+    
+    for(int noThreads = 0; noThreads < 500; noThreads++){
+        omp_set_num_threads(noThreads);
+        timer.start();
+        for (int j = 0; j < 100; j++) {     // let's do it 100 times, otherwise it's too fast!
+            #pragma omp parallel for
+            for (int i = 0; i < pixelCount; i++) {
+                outputImage[i * 3] = (char) (((int) inputImage->buffer[i * 3] + (int) inputImage->buffer[i * 3 + 1] +
+                                              (int) inputImage->buffer[i * 3 + 2]) / 3);
+                outputImage[i * 3 + 1] = outputImage[i * 3];
+                outputImage[i * 3 + 2] = outputImage[i * 3];
+            }
         }
+        printf("labwork 1 CPU OpenMP with %d threads ellapsed %.1fms\n", noThreads, timer.getElapsedTimeInMilliSec());
     }
+
 }
 
 int getSPcores(cudaDeviceProp devProp) {
@@ -159,7 +166,6 @@ void Labwork::labwork2_GPU() {
         cudaGetDeviceProperties(&prop, i);
         // something more here
     }
-
 }
 
 void Labwork::labwork3_GPU() {
