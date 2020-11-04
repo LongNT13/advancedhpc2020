@@ -190,6 +190,17 @@ __global__ void grayScale(uchar3 *input, uchar3 *output){
     output[tid].z = output[tid].y = output[tid].x;
 }
 
+__global__ void grayScale2D(uchar3 *input, uchar3 *output){
+    int width = blockDim.x * gridDim.x;
+    
+    int tidX = threadIdx.x + blockIdx.x * blockDim.x;
+    int tidY = threadIdx.y + blockIdx.y * blockDim.y;
+
+    output[tidY * width + tidX].x = (input[tidY * width + tidX].x + input[tidY * width + tidX].y +
+    input[tidY * width + tidX].z) / 3;
+    output[tidY * width + tidX].z = output[tidY * width + tidX].y = output[tidY * width + tidX].x;
+}
+
 void charToUchar3(char *input, uchar3 *output, int pixelCount){
     for(int i = 0; i < pixelCount; i++){
         output[i].x = input[i*3];
@@ -240,6 +251,37 @@ void Labwork::labwork3_GPU() {
 }
 
 void Labwork::labwork4_GPU() {
+    // Calculate number of pixels
+    int pixelCount = inputImage->width * inputImage->height;
+    
+    // Allocate CUDA memory
+    uchar3 *d_inputImage;
+    uchar3 *d_grayImage;
+    cudaMalloc(&d_inputImage, pixelCount * 3);
+    cudaMalloc(&d_grayImage, pixelCount * 3);
+
+    // Copy CUDA Memory from CPU to GPU
+    cudaMemcpy(d_inputImage, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    // Processing
+    dim3 gridSize = dim3(8,8);
+    dim3 blockSize = dim3(32,32);
+    
+    Timer t;
+    t.start();
+    grayScale2D<<<gridSize, blockSize>>>(d_inputImage, d_grayImage);
+    cudaDeviceSynchronize();
+
+    printf("time elapsed : %fms\n", t.getElapsedTimeInMilliSec());
+    // Copy CUDA Memory from GPU to CPU
+    uchar3 *outputGrayImage;
+    outputGrayImage = (uchar3 *) malloc(pixelCount * 3);
+    cudaMemcpy(outputGrayImage, d_grayImage, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    // Cleaning
+    cudaFree(d_grayImage);
+    cudaFree(d_inputImage);
+    outputImage = (char*) outputGrayImage;
 }
 
 void Labwork::labwork5_CPU() {
