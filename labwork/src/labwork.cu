@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
         case 5:
             labwork.labwork5_CPU();
             labwork.saveOutputImage("labwork5-cpu-out.jpg");
-            labwork.labwork5_GPU(FALSE);
+            labwork.labwork5_GPU(false);
             labwork.saveOutputImage("labwork5-gpu-out.jpg");
             break;
         case 6:
@@ -329,12 +329,113 @@ void Labwork::labwork5_CPU() {
     }
 }
 
-__global__ void blurrImage(uchar3* input, uchar3* output){
-    
+__global__ void blurrImage(uchar3* input, uchar3* output, int widthImage, int heightImage){
+    int filter[] = {
+        0, 0, 1, 2, 1, 0, 0,
+        0, 3, 13, 22, 13, 3, 0,
+        1, 13, 59, 97, 59, 13, 1, 
+        2, 22, 97, 159, 97, 22, 2, 
+        1, 13, 59, 97, 59, 13, 1, 
+        0, 3, 13, 22, 13, 3, 0, 
+        0, 0, 1, 2, 1, 0, 0
+    };
+
+    int tidX = threadIdx.x + blockIdx.x * blockDim.x;
+    int tidY = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if (tidY * widthImage + tidX < (widthImage * heightImage)) {
+        int sum = 0;
+        for(int wFilter = 0; wFilter < 7; wFilter++){
+            for(int hFilter = 0; hFilter < 7; hFilter++){
+                sum += filter[wFilter*7 + hFilter] * 
+                    input[(tidY + (3 - wFilter)) * widthImage + tidX + (3 - hFilter)].x;
+            }
+        }
+        sum /= 1003;
+        output[tidY * widthImage + tidX].x = sum;
+        output[tidY * widthImage + tidX].z = output[tidY * widthImage + tidX].y = output[tidY * widthImage + tidX].x;
+    }
+}
+
+__shared__ int shareFilter[49];
+
+__global__ void blurrImageShared(uchar3* input, uchar3* output, int widthImage, int heightImage){
+    int tidX = threadIdx.x + blockIdx.x * blockDim.x;
+    int tidY = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if (tidY * widthImage + tidX < (widthImage * heightImage)) {
+        int sum = 0;
+        for(int wFilter = 0; wFilter < 7; wFilter++){
+            for(int hFilter = 0; hFilter < 7; hFilter++){
+                sum += shareFilter[wFilter*7 + hFilter] * 
+                    input[(tidY + (3 - wFilter)) * widthImage + tidX + (3 - hFilter)].x;
+            }
+        }
+        sum /= 1003;
+        output[tidY * widthImage + tidX].x = sum;
+        output[tidY * widthImage + tidX].z = output[tidY * widthImage + tidX].y = output[tidY * widthImage + tidX].x;
+    }
 }
 
 void Labwork::labwork5_GPU(bool shared) {
+    // 0, 0, 1, 2, 1, 0, 0,
+    // 0, 3, 13, 22, 13, 3, 0,
+    // 1, 13, 59, 97, 59, 13, 1, 
+    // 2, 22, 97, 159, 97, 22, 2, 
+    // 1, 13, 59, 97, 59, 13, 1, 
+    // 0, 3, 13, 22, 13, 3, 0, 
+    // 0, 0, 1, 2, 1, 0, 0
 
+    int width = inputImage->width;
+    int height = inputImage->height;
+
+    labwork1_CPU();
+    char* inputImageLab5 = outputImage;
+    outputImage = static_cast<char *>(malloc(width * height * 3));
+
+    // Calculate number of pixels
+    int pixelCount = inputImage->width * inputImage->height;
+        
+    // Allocate CUDA memory
+    uchar3 *d_inputImage;
+    uchar3 *d_BlurImage;
+    cudaMalloc(&d_inputImage, pixelCount * 3);
+    cudaMalloc(&d_BlurImage, pixelCount * 3);
+
+    // Copy CUDA Memory from CPU to GPU
+    cudaMemcpy(d_inputImage, inputImageLab5, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    // Processing
+    dim3 blockSize = dim3(32,32);
+    dim3 gridSize = dim3(width/blockSize.x, height/blockSize.y);
+
+    if (width % blockSize.x != 0){
+        gridSize.x += 1;
+    }
+
+    if (height % blockSize.y != 0){
+        gridSize.y += 1;
+    }
+
+    Timer t;
+    t.start();
+    if(shared){
+        blurrImageShared<<<gridSize, blockSize>>>(d_inputImage, d_BlurImage, width, height);
+    } else {
+        blurrImage<<<gridSize, blockSize>>>(d_inputImage, d_BlurImage, width, height);
+    }
+    cudaDeviceSynchronize();
+
+    printf("time elapsed : %fms\n", t.getElapsedTimeInMilliSec());
+    // Copy CUDA Memory from GPU to CPU
+    uchar3 *outputBlurImage;
+    outputBlurImage = (uchar3 *) malloc(pixelCount * 3);
+    cudaMemcpy(outputBlurImage, d_BlurImage, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    // Cleaning
+    cudaFree(d_BlurImage);
+    cudaFree(d_inputImage);
+    outputImage = (char*) outputBlurImage;
 }
 
 void Labwork::labwork6_GPU() {
