@@ -294,14 +294,47 @@ void Labwork::labwork4_GPU() {
     cudaFree(d_grayImage);
     cudaFree(d_inputImage);
     outputImage = (char*) outputGrayImage;
-    
 }
 
 void Labwork::labwork5_CPU() {
+    int filter[] = {
+        0, 0, 1, 2, 1, 0, 0,
+        0, 3, 13, 22, 13, 3, 0,
+        1, 13, 59, 97, 59, 13, 1, 
+        2, 22, 97, 159, 97, 22, 2, 
+        1, 13, 59, 97, 59, 13, 1, 
+        0, 3, 13, 22, 13, 3, 0, 
+        0, 0, 1, 2, 1, 0, 0,
+    };
+    int width = inputImage->width;
+    int height = inputImage->height;
+
+    labwork1_CPU();
+    char* inputImageLab5 = outputImage;
+    outputImage = static_cast<char *>(malloc(width * height * 3));
+
+    for(int i = 3; i < height - 3; i++){
+        for(int j = 3; j < width - 3; j++){
+            int sum = 0;
+            for(int iFilter = 0; iFilter < 7; iFilter++){
+                for(int jFilter = 0; jFilter < 7; jFilter++){
+                    sum += filter[iFilter*7 + jFilter] * inputImageLab5[((i + (iFilter - 3)) * width + (j + (jFilter - 3))) * 3];
+                }
+            }
+            sum /= 1003;
+            outputImage[(i * width + j) * 3] = sum;
+            outputImage[(i * width + j) * 3 + 1] = sum;
+            outputImage[(i * width + j) * 3 + 2] = sum;
+        }
+    }
+}
+
+__global__ void blurrImage(uchar3* input, uchar3* output){
     
 }
 
 void Labwork::labwork5_GPU(bool shared) {
+
 }
 
 void Labwork::labwork6_GPU() {
