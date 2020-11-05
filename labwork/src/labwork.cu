@@ -53,6 +53,7 @@ int main(int argc, char **argv) {
             labwork.saveOutputImage("labwork4-gpu-out.jpg");
             break;
         case 5:
+            labwork.labwork5_CPU();
             labwork.saveOutputImage("labwork5-cpu-out.jpg");
             labwork.labwork5_GPU(FALSE);
             labwork.saveOutputImage("labwork5-gpu-out.jpg");
@@ -190,17 +191,6 @@ __global__ void grayScale(uchar3 *input, uchar3 *output){
     output[tid].z = output[tid].y = output[tid].x;
 }
 
-__global__ void grayScale2D(uchar3 *input, uchar3 *output){
-    int width = blockDim.x * gridDim.x;
-    
-    int tidX = threadIdx.x + blockIdx.x * blockDim.x;
-    int tidY = threadIdx.y + blockIdx.y * blockDim.y;
-
-    output[tidY * width + tidX].x = (input[tidY * width + tidX].x + input[tidY * width + tidX].y +
-    input[tidY * width + tidX].z) / 3;
-    output[tidY * width + tidX].z = output[tidY * width + tidX].y = output[tidY * width + tidX].x;
-}
-
 void charToUchar3(char *input, uchar3 *output, int pixelCount){
     for(int i = 0; i < pixelCount; i++){
         output[i].x = input[i*3];
@@ -250,6 +240,20 @@ void Labwork::labwork3_GPU() {
     outputImage = (char*) outputGrayImage;
 }
 
+__global__ void grayScale2D(uchar3 *input, uchar3 *output, int widthImage, int heightImage){
+    int width = blockDim.x * gridDim.x;
+    
+    int tidX = threadIdx.x + blockIdx.x * blockDim.x;
+    int tidY = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if (tidY * width + tidX < (widthImage * heightImage)) {
+        output[tidY * width + tidX].x = (input[tidY * width + tidX].x + 
+                                        input[tidY * width + tidX].y +
+                                        input[tidY * width + tidX].z) / 3;
+        output[tidY * width + tidX].z = output[tidY * width + tidX].y = output[tidY * width + tidX].x;       
+    }
+}
+
 void Labwork::labwork4_GPU() {
     // Calculate number of pixels
     int pixelCount = inputImage->width * inputImage->height;
@@ -264,12 +268,20 @@ void Labwork::labwork4_GPU() {
     cudaMemcpy(d_inputImage, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
 
     // Processing
-    dim3 gridSize = dim3(8,8);
     dim3 blockSize = dim3(32,32);
+    dim3 gridSize = dim3(inputImage->width/blockSize.x, inputImage->height/blockSize.y);
     
+    if (inputImage->width % blockSize.x != 0){
+        gridSize.x += 1;
+    }
+
+    if (inputImage->height % blockSize.y != 0){
+        gridSize.y += 1;
+    }
+
     Timer t;
     t.start();
-    grayScale2D<<<gridSize, blockSize>>>(d_inputImage, d_grayImage);
+    grayScale2D<<<gridSize, blockSize>>>(d_inputImage, d_grayImage, inputImage->width, inputImage->height);
     cudaDeviceSynchronize();
 
     printf("time elapsed : %fms\n", t.getElapsedTimeInMilliSec());
@@ -282,9 +294,11 @@ void Labwork::labwork4_GPU() {
     cudaFree(d_grayImage);
     cudaFree(d_inputImage);
     outputImage = (char*) outputGrayImage;
+    
 }
 
 void Labwork::labwork5_CPU() {
+    
 }
 
 void Labwork::labwork5_GPU(bool shared) {
@@ -305,29 +319,3 @@ void Labwork::labwork9_GPU() {
 
 void Labwork::labwork10_GPU(){
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
