@@ -8,7 +8,7 @@ class Labwork {
 private:
     JpegLoader jpegLoader;
     JpegInfo *inputImage;
-    char *outputImage;
+    unsigned char *outputImage;
 
 public:
     void loadInputImage(std::string inputFileName);
@@ -27,7 +27,7 @@ public:
 
     void labwork5_GPU(bool shared);
 
-    void labwork6_GPU();
+    void labwork6_GPU(int mode);
 
     void labwork7_GPU();
 

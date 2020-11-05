@@ -11,7 +11,7 @@
  * Provides a convenient to read/write JPEG files using libjpeg
  */
 struct JpegInfo {
-    char *buffer;
+    unsigned char *buffer;
     int width;
     int height;
 };
@@ -19,6 +19,6 @@ struct JpegInfo {
 class JpegLoader {
 public:
     JpegInfo* load(std::string filename);
-    bool save(std::string filename, char *imageBuffer, int width, int height, int quality);
+    bool save(std::string filename, unsigned char *imageBuffer, int width, int height, int quality);
 };
 
